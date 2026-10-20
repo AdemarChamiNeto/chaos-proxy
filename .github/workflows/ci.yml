@@ -1,0 +1,130 @@
+# ============================================================================
+# CI do Chaos Proxy, comentado para estudo.
+#
+# Modelo mental:  WORKFLOW (este arquivo)  →  JOBS (máquinas separadas)  →  STEPS (comandos em ordem)
+# - O GitHub lê todo .yml em .github/workflows/ e roda os que combinam com o evento (push, PR...).
+# - Cada job ganha uma máquina virtual nova e limpa (o "runner"); nada passa de um job para outro
+#   a não ser que você mande (artifacts, outputs).
+# - Os steps de um job rodam em ordem, na mesma máquina; se um falhar, os seguintes não rodam
+#   (a não ser os marcados com `if: always()` ou `if: failure()`).
+# ============================================================================
+
+# Nome que aparece na aba Actions e no "check" do commit.
+name: CI
+
+# QUANDO roda (os "gatilhos").
+on:
+  push:
+    branches: [main]      # todo push na main
+  pull_request:           # todo pull request (de qualquer branch para qualquer branch)
+  workflow_dispatch:      # botão "Run workflow" na aba Actions, para rodar à mão
+
+# Permissões do token automático (GITHUB_TOKEN) que o workflow recebe. Princípio do menor
+# privilégio: este CI só precisa LER o código. Sem isto, o padrão pode deixar escrever no repo.
+permissions:
+  contents: read
+
+# Se chegar um push novo enquanto o anterior ainda roda no mesmo branch, cancela o antigo:
+# não adianta testar um commit que já ficou para trás (e economiza minutos).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: compilar e testar. O nome "testes" é o id; "name" é o que aparece na tela.
+  # ---------------------------------------------------------------------------
+  testes:
+    name: Build e testes (.NET 10)
+    runs-on: ubuntu-latest   # a máquina: Linux, mantida pelo GitHub (grátis em repositório público)
+    timeout-minutes: 15      # trava de segurança: um teste pendurado não queima 6 horas de runner
+
+    steps:
+      # "uses" = usar uma action pronta (um passo empacotado, publicado no GitHub).
+      # O "@v4" fixa a versão: sem isso, uma atualização da action poderia quebrar o seu CI.
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o .NET 10
+        uses: actions/setup-dotnet@v4
+        with:                        # "with" = parâmetros da action
+          dotnet-version: "10.0.x"   # qualquer patch do 10.0
+
+      # Cache: guarda os pacotes NuGet entre execuções. A chave muda quando algum .csproj muda
+      # (hashFiles), aí o cache é refeito. Sem cache funciona igual, só mais devagar.
+      - name: Cache dos pacotes NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # "run" = um comando de terminal (bash, no Ubuntu). Se ele sair com erro, o step falha.
+      - name: Restaurar pacotes
+        run: dotnet restore
+
+      # O Directory.Build.props liga TreatWarningsAsErrors: qualquer aviso do compilador quebra aqui.
+      - name: Compilar (aviso vira erro)
+        run: dotnet build --no-restore -c Release
+
+      - name: Testes (domínio + proxy inteiro)
+        run: dotnet test --no-build -c Release --logger "trx;LogFileName=resultado.trx" --results-directory resultados
+
+      # Só roda se algo falhou antes: sobe o relatório dos testes para baixar na tela da execução.
+      - name: Guardar o relatório dos testes (se falhar)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-dos-testes
+          path: resultados/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Job 2: a imagem Docker sobe e responde? (o mesmo que o Render vai rodar)
+  # "needs" cria a ordem: só começa se o job "testes" passar. Sem "needs", os jobs rodam em paralelo.
+  # ---------------------------------------------------------------------------
+  docker:
+    name: Imagem Docker sobe e responde
+    needs: testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir a imagem
+        run: docker build -t chaos-proxy .
+
+      # Teste de fumaça: sobe o container como em produção e confere 3 coisas.
+      # Um token aleatório por execução: nada de segredo fixo no repositório.
+      - name: Subir e testar o container
+        run: |
+          docker run -d --name proxy -p 8080:8080 -e CHAOS_ADMIN_TOKEN="$(openssl rand -hex 32)" chaos-proxy
+          for i in $(seq 1 30); do
+            curl -fs localhost:8080/_chaos/health && break
+            sleep 1
+          done
+          echo
+          curl -fs localhost:8080/_chaos/health | grep '"upstream":"fake"'
+          curl -fs -o /dev/null localhost:8080/api/tickets
+          curl -fs -o /dev/null localhost:8080/_chaos/openapi.json
+          echo "Container ok"
+
+      # Sem token em produção o app NÃO pode subir. Cuidado com o teste que nunca falha:
+      # um simples "! timeout 20 docker run ..." passaria também se o app SUBISSE (o timeout mata
+      # o container e isso conta como falha, que o "!" inverte). Por isso o código de saída é conferido:
+      # 124 = morto pelo timeout (subiu sem token: errado); 0 = saiu "bem" (errado também).
+      - name: Sem token o container se recusa a subir
+        run: |
+          set +e
+          timeout 20 docker run --rm chaos-proxy > saida.txt 2>&1
+          code=$?
+          set -e
+          cat saida.txt
+          echo "código de saída: $code"
+          test "$code" -ne 124 && test "$code" -ne 0
+          grep -q "CHAOS_ADMIN_TOKEN" saida.txt
+
+      - name: Logs do container (se falhar)
+        if: failure()
+        run: docker logs proxy || true

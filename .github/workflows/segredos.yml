@@ -1,0 +1,24 @@
+name: Segredos
+
+# Procura chaves, senhas e tokens vazados em TODO o histórico do Git (a cada push).
+# Se achar algo: troque o segredo (não basta apagar o commit, o histórico continua público).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # o checkout padrão baixa só o último commit; aqui precisa do histórico todo
+      # CLI em vez da action: a action varre só o intervalo do push e quebra no primeiro push de um repositório novo
+      - name: gitleaks (histórico completo)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git . --redact --no-banner -v
