@@ -1,0 +1,15 @@
+# Blueprint do Render: New + → Blueprint → este repositório.
+# Sem UPSTREAM_URL: a demo pública usa a API falsa embutida, e cada visitante escolhe o próprio cenário.
+services:
+  - type: web
+    name: chaos-proxy
+    runtime: docker
+    plan: free
+    healthCheckPath: /_chaos/health
+    envVars:
+      - key: CHAOS_ADMIN_TOKEN
+        generateValue: true
+      - key: TRUST_FORWARDED_HEADERS
+        value: "true"
+      - key: PROXY_RATE_LIMIT
+        value: "300"

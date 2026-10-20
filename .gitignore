@@ -1,0 +1,8 @@
+bin/
+obj/
+TestResults/
+*.user
+.vs/
+.vscode/
+.env
+.claude/

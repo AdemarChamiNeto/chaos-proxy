@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Chaos.Domain/Chaos.Domain.csproj" />
+    <Project Path="src/Chaos.Proxy/Chaos.Proxy.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Chaos.Domain.Tests/Chaos.Domain.Tests.csproj" />
+    <Project Path="tests/Chaos.Proxy.Tests/Chaos.Proxy.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,42 @@
+# Ambiente completo do teste de caos: MySQL + API de Chamados (PHP) + Chaos Proxy na frente.
+# O Portal roda fora (npm) apontando para o proxy: CHAMADOS_API_URL=http://localhost:8081
+# Precisa do repositório api-chamados ao lado deste (../api-chamados).
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: chamados
+      MYSQL_USER: chamados
+      MYSQL_PASSWORD: chamados
+      MYSQL_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uchamados", "-pchamados"]
+      interval: 5s
+      retries: 20
+
+  api:
+    build: ../api-chamados
+    ports:
+      - "8080:80"
+    environment:
+      DB_DSN: mysql:host=db;port=3306;dbname=chamados;charset=utf8mb4
+      DB_USER: chamados
+      DB_PASSWORD: chamados
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-de-desenvolvimento-local}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-abababababababababababababababababababababababababababababababab}
+      SEED_DEMO: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  chaos:
+    build: .
+    ports:
+      - "8081:8080"
+    environment:
+      UPSTREAM_URL: http://api:80
+      CHAOS_ADMIN_TOKEN: ${CHAOS_ADMIN_TOKEN:-token-local-de-desenvolvimento-com-32-caracteres}
+      # o script de medição dispara muitas requisições seguidas
+      PROXY_RATE_LIMIT: "100000"
+    depends_on:
+      - api

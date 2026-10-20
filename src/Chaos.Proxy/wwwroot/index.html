@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chaos Proxy · demonstração</title>
+  <meta name="description" content="Proxy em .NET + YARP que injeta lentidão, timeout, erro 5xx, 429 e HTML no lugar de JSON entre um cliente e uma API, para testar como o cliente reage.">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" href="/_chaos/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/_chaos/static/demo.css">
+  <script src="/_chaos/static/demo.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#principal">Pular para o conteúdo</a>
+  <header class="topo">
+    <div class="wrap">
+      <h1>Chaos Proxy</h1>
+      <p>Um proxy em <strong>.NET 10 + YARP</strong> que fica entre um cliente e uma API e injeta falhas de propósito: lentidão, timeout, erro 5xx, <code>429</code> com <code>Retry-After</code>, conexão derrubada e HTML no lugar de JSON. Serve para ver, com números, se o cliente aguenta.</p>
+      <p class="links"><a href="https://github.com/AdemarChamiNeto/chaos-proxy">Código no GitHub</a> · <a href="/_chaos/openapi.json">OpenAPI</a> · <a href="https://ademarchamineto.github.io">Portfólio</a></p>
+    </div>
+  </header>
+
+  <main id="principal" class="wrap">
+    <section aria-labelledby="t-cenario">
+      <h2 id="t-cenario">1. Escolha o cenário</h2>
+      <p class="nota">O cenário vale só para você (cookie de sessão por 1 h). Outros visitantes não são afetados.</p>
+      <div id="cenarios" class="cenarios" role="radiogroup" aria-labelledby="t-cenario"></div>
+      <p id="status-cenario" class="nota" aria-live="polite"></p>
+    </section>
+
+    <section aria-labelledby="t-cliente">
+      <h2 id="t-cliente">2. Escolha o cliente</h2>
+      <fieldset class="clientes">
+        <legend class="sr">Tipo de cliente</legend>
+        <label><input type="radio" name="cliente" value="ingenuo" checked> <strong>Ingênuo</strong>: uma tentativa, sem timeout próprio, aceita qualquer resposta.</label>
+        <label><input type="radio" name="cliente" value="resiliente"> <strong>Resiliente</strong>: timeout de 3 s, até 2 novas tentativas com espera crescente (só em GET), respeita o <code>Retry-After</code> e trata HTML como erro.</label>
+      </fieldset>
+    </section>
+
+    <section aria-labelledby="t-rodar">
+      <h2 id="t-rodar">3. Dispare</h2>
+      <button id="disparar" type="button">Disparar 20 requisições a <code>GET /api/tickets</code></button>
+      <div id="resumo" class="resumo" aria-live="polite"></div>
+      <div class="tabela-rolagem">
+        <table id="tabela" hidden>
+          <caption>Resultado de cada requisição</caption>
+          <thead><tr><th scope="col">#</th><th scope="col">Resultado</th><th scope="col">Tempo</th><th scope="col">Tentativas</th><th scope="col">Falha injetada (X-Chaos-Fault)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-como">
+      <h2 id="t-como">Como funciona</h2>
+      <ul class="lista">
+        <li>Tudo que não começa com <code>/_chaos</code> é repassado para a API (aqui, uma API de demonstração embutida; no projeto, a API de Chamados em PHP).</li>
+        <li>As regras são avaliadas em ordem; a primeira que casa com a rota e passa no sorteio decide a falha. O sorteio e o relógio são injetáveis, então os testes são determinísticos.</li>
+        <li>Toda falha injetada sai com o cabeçalho <code>X-Chaos-Fault</code>. Uma falha <em>real</em> (a API fora do ar) vira <code>502</code> sem ele: teste e problema de verdade nunca se confundem.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap rodape">Ademar C. Neto · 2026</footer>
+</body>
+</html>
