@@ -68,7 +68,7 @@ public class RuleValidatorTests
     [Fact]
     public void No_maximo_20_regras()
     {
-        var rules = Enumerable.Range(0, 5).Select(i => new FaultRule { Name = $"r{i}", Kind = FaultKind.Drop }).ToArray();
+        var rules = Enumerable.Range(0, 21).Select(i => new FaultRule { Name = $"r{i}", Kind = FaultKind.Drop }).ToArray();
         Assert.True(RuleValidator.Validate(rules).ContainsKey("rules"));
     }
 }
