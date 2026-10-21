@@ -43,17 +43,17 @@ jobs:
       # "uses" = usar uma action pronta (um passo empacotado, publicado no GitHub).
       # O "@v4" fixa a versão: sem isso, uma atualização da action poderia quebrar o seu CI.
       - name: Baixar o código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Instalar o .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:                        # "with" = parâmetros da action
           dotnet-version: "10.0.x"   # qualquer patch do 10.0
 
       # Cache: guarda os pacotes NuGet entre execuções. A chave muda quando algum .csproj muda
       # (hashFiles), aí o cache é refeito. Sem cache funciona igual, só mais devagar.
       - name: Cache dos pacotes NuGet
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
@@ -73,7 +73,7 @@ jobs:
       # Só roda se algo falhou antes: sobe o relatório dos testes para baixar na tela da execução.
       - name: Guardar o relatório dos testes (se falhar)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: resultado-dos-testes
           path: resultados/
@@ -90,7 +90,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Construir a imagem
         run: docker build -t chaos-proxy .
