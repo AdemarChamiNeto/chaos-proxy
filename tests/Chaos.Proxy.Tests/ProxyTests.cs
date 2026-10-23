@@ -179,6 +179,8 @@ public class ProxyTests
         var meu = await Body(await a.GetAsync("/_chaos/log"));
         var entrada = Assert.Single(meu.EnumerateArray());
         Assert.Equal("/api/tickets", entrada.GetProperty("path").GetString());
+        // o id da sessão (valor do cookie httpOnly) não volta para o visitante
+        Assert.Equal(JsonValueKind.Null, entrada.GetProperty("session").ValueKind);
         Assert.StartsWith("latency; rule=lenta", entrada.GetProperty("fault").GetString());
 
         Assert.Empty((await Body(await app.Visitor().GetAsync("/_chaos/log"))).EnumerateArray());

@@ -2,6 +2,8 @@
 
 Proxy reverso em .NET 10 + YARP que fica entre um cliente e uma API e injeta falhas de propósito (lentidão, timeout, erro 5xx, `429` com `Retry-After`, conexão derrubada e HTML no lugar de JSON) para medir, com números, se o cliente aguenta.
 
+**Demo:** [chaos-proxy.onrender.com](https://chaos-proxy.onrender.com): escolha um cenário (vale só para você) e compare um cliente ingênuo com um resiliente. O plano grátis do Render dorme sem visitas, e a primeira leva uns 30 s para acordar.
+
 Foi feito para o [Portal de Chamados](https://github.com/AdemarChamiNeto/portal-chamados) e a [API de Chamados](https://github.com/AdemarChamiNeto/api-chamados): com ele na frente da API, o Portal ganhou novas tentativas, `Retry-After` e circuit breaker, e no caminho apareceram dois bugs reais (ver [Decisões](#decisões)).
 
 <p>
@@ -131,6 +133,8 @@ dotnet test        # 67 testes: 45 do domínio e 22 do proxy inteiro
 - **Configuração:** em produção não sobe sem token; junta todos os problemas numa mensagem, sem mostrar os valores.
 
 ## Deploy (Render)
+
+No ar em [chaos-proxy.onrender.com](https://chaos-proxy.onrender.com), sem banco: regras, sessões e log ficam em memória (com limite) e zeram quando o serviço reinicia.
 
 1. **New + → Blueprint** → este repositório (`render.yaml`).
 2. O `CHAOS_ADMIN_TOKEN` é gerado pelo Render. Sem `UPSTREAM_URL`, a demo pública usa a API embutida.

@@ -136,8 +136,9 @@ public static class AdminEndpoints
             // o administrador vê tudo; o visitante, só as próprias requisições
             if (ctx.Request.Headers.Authorization.Count > 0)
                 return auth.Check(ctx) ?? Results.Ok(log.Snapshot());
+            // sem o id da sessão na resposta: o cookie é httpOnly justamente para o JavaScript não ler esse valor
             var id = ctx.Request.Cookies[SessionStore.Cookie];
-            return Results.Ok(id is null ? [] : log.Snapshot(e => e.Session == id));
+            return Results.Ok(id is null ? [] : log.Snapshot(e => e.Session == id).Select(e => e with { Session = null }).ToList());
         })
         .WithSummary($"Últimas requisições (até {RequestLog.Capacity})")
         .RequireRateLimiting(RateLimits.Read);
