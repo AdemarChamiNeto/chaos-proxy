@@ -10,7 +10,7 @@ services:
       MYSQL_PASSWORD: chamados
       MYSQL_ROOT_PASSWORD: root
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uchamados", "-pchamados"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uchamados", "-pchamados"]
       interval: 5s
       retries: 20
 
